@@ -1,3 +1,5 @@
+Projeto de sala de conferencia de video usando mesh.
+
 # Instalando:
 1. git clone
 2. npm install
