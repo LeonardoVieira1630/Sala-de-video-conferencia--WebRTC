@@ -1,14 +1,13 @@
 # Sala WebRTC-Mesh:
 
-//TODO: Melhorar as figurinhas
+
 <p align="center">
 <img src="https://img.shields.io/badge/contributors-1-brightgreen"/>
 <img src="https://img.shields.io/badge/version-1.0.0-blue"/>
-<img src="https://img.shields.io/aur/last-modified/:WebRTC-Mesh"/>
-<img src="https://img.shields.io/aur/maintainer/:Ffquenome"/>
+<img src="https://img.shields.io/github/languages/count/Ffquenome/WebRTC-Mesh"/>
 </p>
-
-
+<img src="https://img.shields.io/github/languages/count/Ffquenome/WebRTC-Mesh"/>
+</p>
 
 # What is this for?
 
