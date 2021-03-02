@@ -16,7 +16,7 @@ function MediaOfTheUser(mediaStream) {
 function RemoteStream (evt) {    
     console.log('User id: ', evt.id);
 
-    //Creating and configurating the new video.
+    //Creating and Setting the new video.
     const remoteVideo  = document.createElement('video');
     remoteVideo.setAttribute('data-socket', evt.id);
     remoteVideo.srcObject   = evt.stream;
@@ -24,7 +24,7 @@ function RemoteStream (evt) {
     remoteVideo.muted       = true; 
     remoteVideo.playsinline = true;
 
-    //Puting it on the html page:
+    //Putting it on the html page:
     document.querySelector('.videos').appendChild(remoteVideo);
 }
 
@@ -36,7 +36,7 @@ function removeFromHtml(userId) {
 }
 
 
-//Startting the client
+//Starting the client
 cm.startLocalStream();
 
 
@@ -48,9 +48,9 @@ cm.on('localStream', evt=>{
 
 cm.on('remoteStream', (evt)=>{
     RemoteStream(evt);
-})
+});
 
 
 cm.on('user-left', evt=>{
     removeFromHtml(evt);
-})
+});
