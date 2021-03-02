@@ -1,7 +1,7 @@
 /*
 
     +++Cliente to WebRTC_Mesh room+++
-    To undrestand about how this code works, please take a look at the README in the project.
+    To understand about how this code works, please take a look at the README in the project.
 
     
 */
@@ -45,12 +45,52 @@ class ClientMesh {
             callback(args);
         });
     }
- 
+
+
+
+
+/*
+    FunctionCandidate(data){
+        const fromId = data.fromId;
+         //Works with the candidate part:
+        if (fromId !== this.localUserId) {
+            console.log(this.socket.id, ' Receive Candidate from ', fromId);
+            if (data.candidate) {
+                this.gotIceCandidate(fromId, data.candidate);
+            }
+        };
+    };
+   
+
+
+    FunctionSDP(data){
+        const fromId = data.fromId;
+        if (fromId !== this.localUserId && data.description) { // TODO: precisa desse if?
+            console.log(this.socket.id, ' Receive sdp from ', fromId);
+            this.connections[fromId].setRemoteDescription(new RTCSessionDescription(data.description))
+            .then(() => {
+                if (data.description.type === 'offer') {
+                    this.connections[fromId].createAnswer()
+                    .then((description) => {
+                        this.connections[fromId].setLocalDescription(description).then(() => {
+                            console.log(this.socket.id, ' Send answer to ', fromId);
+                            this.socket.emit('sdp', {
+                                type: 'sdp',
+                                toId: fromId,
+                                description: this.connections[fromId].localDescription
+                            });
+                        });
+                    }).catch(e => console.log('Error: ',e));
+                }
+            }).catch(e => console.log('Error: ',e)); 
+        }
+    }
+  */
 
 
     //Main Functions: 
 
-    //It will controll the main part of the client (Signaling parts && Offer/ Answer && Connections).
+    //It will control the main part of the client (Signaling parts && Offer/ Answer && Connections).
     connectSocketToSignaling(mediaStream) {
         this.socket = io.connect();
 
@@ -69,7 +109,7 @@ class ClientMesh {
                 
                 clients.forEach((userId) => {
                     //Who is entering now, goes inside the if.
-                    //The others (that are aredy in the room) dont go inside.
+                    //The others (that are already in the room) don't go inside.
                     if (!this.connections[userId]) {
                         this.connections[userId] = new RTCPeerConnection(mediaStream);
                         //Melhorar:
@@ -77,12 +117,13 @@ class ClientMesh {
 
                             if (evt.candidate) {
                                 console.log(this.socket.id, ' Send candidate to ', userId);
-                                this.socket.emit('signaling', 
+                                this.socket.emit('candidate',  //TODO: Analisar necessidade dessa descrição.
                                {type: 'candidate', candidate: evt.candidate, toId: userId}); 
                             };
                            
                         };
 
+                        //TODO: arrumar.
                         //New video to the new guy.
                         this.connections[userId].onaddstream = () => { 
                             //const remoteStream = new MediaStream;
@@ -98,6 +139,7 @@ class ClientMesh {
                 });
 
 
+                //TODO: encadeamento de promise
                 //With more then one, it runs and we send offers to connect
                 if (room.count >= 2) {
                     console.log(room.count + ' Guys in the room');
@@ -106,8 +148,8 @@ class ClientMesh {
                         this.connections[joinedUserId].setLocalDescription(description)
                         .then(() => {
                             console.log(this.socket.id, ' Send offer to ', joinedUserId);
-                            this.socket.emit('signaling', {
-                                toId: joinedUserId,
+                            this.socket.emit('sdp', {
+                                toId: joinedUserId,  //TODO: Analisar necessidade dessa descrição.
                                 description: this.connections[joinedUserId].localDescription,
                                 type: 'sdp'
                             });
@@ -126,20 +168,63 @@ class ClientMesh {
             });
 
             
-            //Maneger of the signaling messages
+
+            this.socket.on('candidate', (data) => {
+                const fromId = data.fromId;
+                //Works with the candidate part:
+               if (fromId !== this.localUserId) {
+                   console.log(this.socket.id, ' Receive Candidate from ', fromId);
+                   if (data.candidate) {
+                       this.gotIceCandidate(fromId, data.candidate);
+                   }
+               };     
+            });
+
+
+
+            this.socket.on('sdp', (data) => {
+                const fromId = data.fromId;
+                if (fromId !== this.localUserId && data.description) { // TODO: precisa desse if?
+                    console.log(this.socket.id, ' Receive sdp from ', fromId);
+                    this.connections[fromId].setRemoteDescription(new RTCSessionDescription(data.description))
+                    .then(() => {
+                        if (data.description.type === 'offer') {
+                            this.connections[fromId].createAnswer()
+                            .then((description) => {
+                                this.connections[fromId].setLocalDescription(description).then(() => {
+                                    console.log(this.socket.id, ' Send answer to ', fromId);
+                                    this.socket.emit('sdp', {
+                                        type: 'sdp',
+                                        toId: fromId,
+                                        description: this.connections[fromId].localDescription
+                                    });
+                                });
+                            }).catch(e => console.log('Error: ',e));
+                        }
+                    }).catch(e => console.log('Error: ',e)); 
+                }     
+            });
+
+
+            /*
+            //TODO: fazer os eventos separadamente
+            //Manager of the signaling messages
             this.socket.on('signaling', (data) => {
                 const fromId = data.fromId;
                 switch (data.type) {
 
 
+
+
                 case 'candidate':
-                //Works with the candidate part:
-                if (fromId !== this.localUserId) {
-                    console.log(this.socket.id, ' Receive Candidate from ', fromId);
-                    if (data.candidate) {
-                        this.gotIceCandidate(fromId, data.candidate);
-                    }
-                };
+                    //Works with the candidate part:
+                    if (fromId !== this.localUserId) {
+                        console.log(this.socket.id, ' Receive Candidate from ', fromId);
+                        if (data.candidate) {
+                            this.gotIceCandidate(fromId, data.candidate);
+                        }
+                    };
+                break;    
 
 
                 case 'sdp': //Session Description Protocol
@@ -153,9 +238,9 @@ class ClientMesh {
                             .then((description) => {
                                 this.connections[fromId].setLocalDescription(description).then(() => {
                                     console.log(this.socket.id, ' Send answer to ', fromId);
-                                    this.socket.emit('signaling', {
+                                    this.socket.emit('sdp', {
                                         type: 'sdp',
-                                        toId: fromId,
+                                        toId: fromId, //TODO: Analisar necessidade dessa descrição.
                                         description: this.connections[fromId].localDescription
                                     });
                                 });
@@ -164,13 +249,14 @@ class ClientMesh {
                     }).catch(e => console.log('Error: ',e));
                     
                     }
-                }
-            });
+                }break;
+
+            });*/
         });
     }
 
 
-
+    //TODO: DATA CHANNEL
     // Starting the client: 
 
     //Function to start every thing:
