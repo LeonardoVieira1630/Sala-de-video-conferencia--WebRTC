@@ -6,8 +6,7 @@
 <img src="https://img.shields.io/badge/version-1.0.0-blue"/>
 <img src="https://img.shields.io/github/languages/count/Ffquenome/WebRTC-Mesh"/>
 </p>
-<img src="https://img.shields.io/github/languages/count/Ffquenome/WebRTC-Mesh"/>
-</p>
+
 
 # What is this for?
 
