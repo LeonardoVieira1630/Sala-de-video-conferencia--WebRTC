@@ -1,8 +1,6 @@
 /*
-
     +++Cliente to WebRTC_Mesh room+++
     To understand about how this code works, please take a look at the README in the project.
-
     
 */
 
@@ -46,47 +44,7 @@ class ClientMesh {
         });
     }
 
-
-
-
-/*
-    FunctionCandidate(data){
-        const fromId = data.fromId;
-         //Works with the candidate part:
-        if (fromId !== this.localUserId) {
-            console.log(this.socket.id, ' Receive Candidate from ', fromId);
-            if (data.candidate) {
-                this.gotIceCandidate(fromId, data.candidate);
-            }
-        };
-    };
-   
-
-
-    FunctionSDP(data){
-        const fromId = data.fromId;
-        if (fromId !== this.localUserId && data.description) { // TODO: precisa desse if?
-            console.log(this.socket.id, ' Receive sdp from ', fromId);
-            this.connections[fromId].setRemoteDescription(new RTCSessionDescription(data.description))
-            .then(() => {
-                if (data.description.type === 'offer') {
-                    this.connections[fromId].createAnswer()
-                    .then((description) => {
-                        this.connections[fromId].setLocalDescription(description).then(() => {
-                            console.log(this.socket.id, ' Send answer to ', fromId);
-                            this.socket.emit('sdp', {
-                                type: 'sdp',
-                                toId: fromId,
-                                description: this.connections[fromId].localDescription
-                            });
-                        });
-                    }).catch(e => console.log('Error: ',e));
-                }
-            }).catch(e => console.log('Error: ',e)); 
-        }
-    }
-  */
-
+    
 
     //Main Functions: 
 
@@ -117,7 +75,7 @@ class ClientMesh {
 
                             if (evt.candidate) {
                                 console.log(this.socket.id, ' Send candidate to ', userId);
-                                this.socket.emit('candidate',  //TODO: Analisar necessidade dessa descrição.
+                                this.socket.emit('candidate', 
                                {type: 'candidate', candidate: evt.candidate, toId: userId}); 
                             };
                            
@@ -126,7 +84,7 @@ class ClientMesh {
                         //TODO: arrumar.
                         //New video to the new guy.
                         this.connections[userId].onaddstream = () => { 
-                            //const remoteStream = new MediaStream;
+                            //const remoteStream = new MediaStream;//////comentado e media nop remote 
                             this.emit('remoteStream', {stream: mediaStream, id:userId});
                             
                         };
@@ -139,8 +97,11 @@ class ClientMesh {
                 });
 
 
+                
+
                 //TODO: encadeamento de promise
                 //With more then one, it runs and we send offers to connect
+
                 if (room.count >= 2) {
                     console.log(room.count + ' Guys in the room');
                     this.connections[joinedUserId].createOffer()
@@ -148,22 +109,45 @@ class ClientMesh {
                         this.connections[joinedUserId].setLocalDescription(description)
                         .then(() => {
                             console.log(this.socket.id, ' Send offer to ', joinedUserId);
-                            this.socket.emit('sdp', {
+                            this.socket.emit('offer', { //mudei aqui que era sdp
+                                type: 'offer', //mudei aqui que era sdp
                                 toId: joinedUserId,  //TODO: Analisar necessidade dessa descrição.
-                                description: this.connections[joinedUserId].localDescription,
-                                type: 'sdp'
+                                description: this.connections[joinedUserId].localDescription
                             });
                         })
                         .catch(e => console.log('Error: ',e));
                     });
                 }
-                
+
+
+
+                /*
+                if (room.count >= 2) {
+                    console.log(room.count + ' Guys in the room');
+                    this.connections[joinedUserId].createOffer()
+                    .then((description) => {
+                        this.connections[joinedUserId].setLocalDescription(description)
+                    })
+                    .then(() => {
+                        console.log(this.socket.id, ' Send offer to ', joinedUserId);
+                        this.socket.emit('offer', {
+                            toId: joinedUserId,  //TODO: Analisar necessidade dessa descrição.
+                            description: this.connections[joinedUserId].localDescription,
+                           
+                        });
+                    })
+                    .catch(e => console.log('Error: ',e));
+                    
+                }*/
+               
 
             });
 
             
+
             //Remove the video from the guy that is going out.
             this.socket.on('user-left', (userId) => {
+                //console.log(room.count + ' Guys in the room');
                 this.emit('user-left', userId);
             });
 
@@ -172,86 +156,51 @@ class ClientMesh {
             this.socket.on('candidate', (data) => {
                 const fromId = data.fromId;
                 //Works with the candidate part:
-               if (fromId !== this.localUserId) {
+                if (fromId !== this.localUserId) {
                    console.log(this.socket.id, ' Receive Candidate from ', fromId);
                    if (data.candidate) {
-                       this.gotIceCandidate(fromId, data.candidate);
+                    this.gotIceCandidate(fromId, data.candidate);
                    }
                };     
             });
 
 
-
-            this.socket.on('sdp', (data) => {
+            
+            this.socket.on('offer', (data) => {
                 const fromId = data.fromId;
-                if (fromId !== this.localUserId && data.description) { // TODO: precisa desse if?
+                if (data.fromId !== this.localUserId && data.description) { 
+
+                    const con = this.connections[fromId];
                     console.log(this.socket.id, ' Receive sdp from ', fromId);
-                    this.connections[fromId].setRemoteDescription(new RTCSessionDescription(data.description))
-                    .then(() => {
-                        if (data.description.type === 'offer') {
-                            this.connections[fromId].createAnswer()
-                            .then((description) => {
-                                this.connections[fromId].setLocalDescription(description).then(() => {
-                                    console.log(this.socket.id, ' Send answer to ', fromId);
-                                    this.socket.emit('sdp', {
-                                        type: 'sdp',
-                                        toId: fromId,
-                                        description: this.connections[fromId].localDescription
-                                    });
-                                });
-                            }).catch(e => console.log('Error: ',e));
-                        }
-                    }).catch(e => console.log('Error: ',e)); 
+                    con.setRemoteDescription(new RTCSessionDescription(data.description))
+                    .then(() => con.createAnswer())
+                    .catch(e => console.log('Error: ',e))
+                    .then((description) => {
+                        con.setLocalDescription(description)
+                        //TODO promise
+                        .then(() => {this.socket.emit('answer', {type: 'answer', toId: fromId, description: con.localDescription })
+                        })
+                        .catch(e => console.log('Error: ',e))
+                    })  
                 }     
-            });
-
-
-            /*
-            //TODO: fazer os eventos separadamente
-            //Manager of the signaling messages
-            this.socket.on('signaling', (data) => {
-                const fromId = data.fromId;
-                switch (data.type) {
+            })
 
 
 
+            this.socket.on('answer', (data) => {
+                if (data.fromId !== this.localUserId && data.description ) { 
 
-                case 'candidate':
-                    //Works with the candidate part:
-                    if (fromId !== this.localUserId) {
-                        console.log(this.socket.id, ' Receive Candidate from ', fromId);
-                        if (data.candidate) {
-                            this.gotIceCandidate(fromId, data.candidate);
-                        }
-                    };
-                break;    
+                    const fromId = data.fromId;
+                    console.log('Resposta recebida de:' ,fromId);
+                    const con = this.connections[fromId];
 
-
-                case 'sdp': //Session Description Protocol
-                //Works with the offers and answers:
-                if (fromId !== this.localUserId && data.description) {
-                    console.log(this.socket.id, ' Receive sdp from ', fromId);
-                    this.connections[fromId].setRemoteDescription(new RTCSessionDescription(data.description))
-                    .then(() => {
-                        if (data.description.type === 'offer') {
-                            this.connections[fromId].createAnswer()
-                            .then((description) => {
-                                this.connections[fromId].setLocalDescription(description).then(() => {
-                                    console.log(this.socket.id, ' Send answer to ', fromId);
-                                    this.socket.emit('sdp', {
-                                        type: 'sdp',
-                                        toId: fromId, //TODO: Analisar necessidade dessa descrição.
-                                        description: this.connections[fromId].localDescription
-                                    });
-                                });
-                            }).catch(e => console.log('Error: ',e));
-                        }
-                    }).catch(e => console.log('Error: ',e));
-                    
-                    }
-                }break;
-
-            });*/
+                    con.setRemoteDescription(new RTCSessionDescription(data.description))
+                    .catch(e => console.log('Error: ',e));
+                }
+            });  
+            
+            
+            
         });
     }
 
@@ -273,3 +222,4 @@ class ClientMesh {
         }).catch(e => console.log('Error: ',e));
     }
 } 
+
