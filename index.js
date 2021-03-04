@@ -25,22 +25,32 @@ server.get('/', function(req, res){
 //Aqui acontece se tiver uma connection (io.on). Basicamente controla a entrada e a saida de pessoas.
 io.on('connection', function (socket) {
     io.emit('user-joined', { clients:  Object.keys(io.sockets.clients().sockets), count: io.engine.clientsCount, joinedUserId: socket.id});
-    /*
-    socket.on('signaling', function(data) {
-        io.to(data.toId).emit('signaling', { fromId: socket.id, ...data });
-    });
-*/
     
-    //TODO: analizar se os parametros estão certinhos:
+    
+    
     socket.on('candidate', function(data) { 
         io.to(data.toId).emit('candidate', { fromId: socket.id, ...data });
     });
 
     
-    //TODO: analizar se os parametros estão certinhos:
+   /*
     socket.on('sdp', function(data) { 
         io.to(data.toId).emit('sdp', { fromId: socket.id, ...data });
     });
+*/
+
+
+    socket.on('offer', function(data) { 
+        //console.log("Enviando Offer para: ", data.toId);
+       
+        io.to(data.toId).emit('offer', { fromId: socket.id, ...data });
+    });
+
+    socket.on('answer', function(data) { 
+        //console.log("Enviando Answer para: ", data.toId);
+        io.to(data.toId).emit('answer', { fromId: socket.id, ...data });
+    });
+
 
     socket.on('disconnect', function() {
         io.sockets.emit('user-left', socket.id);
