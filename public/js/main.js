@@ -27,6 +27,7 @@ class ClientMesh {
     }
 
 
+
     //Function to handle with the events:
     on(eventName, callback){
         if (!this.events[eventName]) {
@@ -37,6 +38,7 @@ class ClientMesh {
     }
     
 
+
     //Function to handle with the messages:
     emit(eventName, args){
         this.events[eventName].forEach((callback)=>{
@@ -44,7 +46,7 @@ class ClientMesh {
         });
     }
 
-    
+
 
     //Main Functions: 
 
@@ -59,7 +61,7 @@ class ClientMesh {
             console.log('localUser', this.localUserId);
 
 
-            this.socket.on('user-joined', (room) => { //room=data
+            this.socket.on('user-joined', (room) => { 
                 const clients = room.clients;
                 const joinedUserId = room.joinedUserId;
                 console.log(joinedUserId, ' joined');
@@ -69,77 +71,68 @@ class ClientMesh {
                     //Who is entering now, goes inside the if.
                     //The others (that are already in the room) don't go inside.
                     if (!this.connections[userId]) {
-                        this.connections[userId] = new RTCPeerConnection(mediaStream);
-                        //Melhorar:
+
+                        const pc = new RTCPeerConnection(mediaStream);
+                        let track = 0;
+
+
+                        pc.ontrack = evt => {
+
+                            // add the first track to my corresponding user.                            else{
+                            if(track==0){
+                              pc.addTrack(evt.track);
+                              track=1;
+                            }
+
+                            // add the second track to my corresponding user.                            else{
+                            else{
+                                this.emit('remoteStream', {stream: mediaStream, id:userId})
+                                pc.addTrack(evt.track);
+                            }
+
+                        }
+                        
+                        // track receives objects of type MediaStreamTrack from the returned array
+                        // by .getTracks. This addTrack function "calls" onTrack.
+                        for(const track of mediaStream.getTracks()){
+                            pc.addTrack(track);
+                        }
+                        
+
+
+                        this.connections[userId] = pc;
                         this.connections[userId].onicecandidate = evt => {
 
                             if (evt.candidate) {
                                 console.log(this.socket.id, ' Send candidate to ', userId);
                                 this.socket.emit('candidate', 
-                               {type: 'candidate', candidate: evt.candidate, toId: userId}); 
+                            {type: 'candidate', candidate: evt.candidate, toId: userId}); 
                             };
-                           
-                        };
-
-                        //TODO: arrumar.
-                        //New video to the new guy.
-                        this.connections[userId].onaddstream = () => { 
-                            //const remoteStream = new MediaStream;//////comentado e media nop remote 
-                            this.emit('remoteStream', {stream: mediaStream, id:userId});
-                            
-                        };
                         
-                        //Adding the new video.
-                        this.connections[userId].addStream(this.localStream);
-                        
+                        };
+                      
                     }
-
                 });
-
 
                 
 
-                //TODO: encadeamento de promise
                 //With more then one, it runs and we send offers to connect
 
                 if (room.count >= 2) {
                     console.log(room.count + ' Guys in the room');
-                    this.connections[joinedUserId].createOffer()
-                    .then((description) => {
-                        this.connections[joinedUserId].setLocalDescription(description)
-                        .then(() => {
-                            console.log(this.socket.id, ' Send offer to ', joinedUserId);
-                            this.socket.emit('offer', { //mudei aqui que era sdp
-                                type: 'offer', //mudei aqui que era sdp
-                                toId: joinedUserId,  //TODO: Analisar necessidade dessa descrição.
-                                description: this.connections[joinedUserId].localDescription
-                            });
-                        })
-                        .catch(e => console.log('Error: ',e));
-                    });
-                }
-
-
-
-                /*
-                if (room.count >= 2) {
-                    console.log(room.count + ' Guys in the room');
-                    this.connections[joinedUserId].createOffer()
-                    .then((description) => {
-                        this.connections[joinedUserId].setLocalDescription(description)
-                    })
+                    const description = this.connections[joinedUserId].createOffer(); 
+                    this.connections[joinedUserId].setLocalDescription(description)
                     .then(() => {
                         console.log(this.socket.id, ' Send offer to ', joinedUserId);
-                        this.socket.emit('offer', {
-                            toId: joinedUserId,  //TODO: Analisar necessidade dessa descrição.
-                            description: this.connections[joinedUserId].localDescription,
-                           
+                        this.socket.emit('offer', { 
+                            type: 'offer', 
+                            toId: joinedUserId, 
+                            description: this.connections[joinedUserId].localDescription
                         });
                     })
                     .catch(e => console.log('Error: ',e));
                     
-                }*/
-               
+                }  
 
             });
 
@@ -147,7 +140,6 @@ class ClientMesh {
 
             //Remove the video from the guy that is going out.
             this.socket.on('user-left', (userId) => {
-                //console.log(room.count + ' Guys in the room');
                 this.emit('user-left', userId);
             });
 
@@ -170,18 +162,20 @@ class ClientMesh {
                 const fromId = data.fromId;
                 if (data.fromId !== this.localUserId && data.description) { 
 
-                    const con = this.connections[fromId];
-                    console.log(this.socket.id, ' Receive sdp from ', fromId);
-                    con.setRemoteDescription(new RTCSessionDescription(data.description))
-                    .then(() => con.createAnswer())
-                    .catch(e => console.log('Error: ',e))
-                    .then((description) => {
-                        con.setLocalDescription(description)
-                        //TODO promise
-                        .then(() => {this.socket.emit('answer', {type: 'answer', toId: fromId, description: con.localDescription })
+                    const connection = this.connections[fromId];
+                    console.log(this.socket.id, ' Receive offer from ', fromId);
+                    connection.setRemoteDescription(new RTCSessionDescription(data.description));
+
+                    const description  = connection.createAnswer();
+                    connection.setLocalDescription(description)
+                    .then(() => {this.socket.emit('answer',{
+                        type: 'answer', 
+                        toId: fromId, 
+                        description: connection.localDescription 
                         })
-                        .catch(e => console.log('Error: ',e))
-                    })  
+                    })
+                    .catch(e => console.log('Error: ',e))
+                     
                 }     
             })
 
@@ -192,20 +186,19 @@ class ClientMesh {
 
                     const fromId = data.fromId;
                     console.log('Resposta recebida de:' ,fromId);
-                    const con = this.connections[fromId];
+                    const connection = this.connections[fromId];
 
-                    con.setRemoteDescription(new RTCSessionDescription(data.description))
+                    connection.setRemoteDescription(new RTCSessionDescription(data.description))
                     .catch(e => console.log('Error: ',e));
                 }
             });  
-            
-            
-            
+
         });
+
     }
 
 
-    //TODO: DATA CHANNEL
+   
     // Starting the client: 
 
     //Function to start every thing:
