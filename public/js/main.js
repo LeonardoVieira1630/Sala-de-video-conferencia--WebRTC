@@ -53,6 +53,25 @@ class ClientMesh {
     //It will control the main part of the client (Signaling parts && Offer/ Answer && Connections).
     connectSocketToSignaling(mediaStream) {
         this.socket = io.connect();
+        var socket = this.socket;// TODO
+
+        
+        // Quando dou submit na mensagem:
+        $("form#chat").submit(function(e){
+            e.preventDefault(); // para não enviar o formulário 
+
+            var mensagem = $(this).find("#texto_mensagem").val();
+            var usuario = $("#lista_usuarios").val(); // Usuário selecionado na lista lateral direita
+
+            // Evento acionado no servidor para o envio da mensagem
+            // junto com o nome do usuário selecionado da lista
+            socket.emit("enviar mensagem", {msg: mensagem, usu: usuario}, function(){
+                $("form#chat #texto_mensagem").val("");
+            });
+            
+        }); 
+
+
 
         //When someone connect:
         this.socket.on('connect', () => {
@@ -60,13 +79,40 @@ class ClientMesh {
             //logando o id do user que entrou.
             console.log('localUser', this.localUserId);
 
+            console.log(this.socket)
+
+            $("form#login").submit(function(e){
+                e.preventDefault();
+                console.log('Entrou aqui');
+                //TODO: não funciona this.socket.emit
+                // Evento enviado quando o usuário insere um apelido
+
+                
+                socket.emit('entrar', $(this).find("#apelido").val(), function(valido) { 
+                    if(valido){
+                        
+                        // Caso não exista nenhum usuário com o mesmo nome, o painel principal é exibido
+                        $("#acesso_usuario_hide").hide();
+                        $("#sala_chat").show();
+                    }else{
+                        // Do contrário o campo de mensagens é limpo e é apresentado um alert
+                        $("#acesso_usuario").val("");
+                        alert("Nome já utilizado nesta sala");
+                    }
+                });
+                
+
+            });
 
             this.socket.on('user-joined', (room) => { 
                 const clients = room.clients;
                 const joinedUserId = room.joinedUserId;
                 console.log(joinedUserId, ' joined');
 
+                console.log(room.clients);
+
                 
+
                 clients.forEach((userId) => {
                     //Who is entering now, goes inside the if.
                     //The others (that are already in the room) don't go inside.
@@ -74,22 +120,23 @@ class ClientMesh {
 
                         const pc = new RTCPeerConnection(mediaStream);
                         let track = 0;
-
+                        
+                        //console.log('Passou aqui ----');
 
                         pc.ontrack = evt => {
 
-                            // add the first track to my corresponding user.                            else{
+                            // add the first track to my corresponding user.                            
                             if(track==0){
                               pc.addTrack(evt.track);
                               track=1;
                             }
 
-                            // add the second track to my corresponding user.                            else{
+                            // add the second track to my corresponding user.                           
                             else{
                                 this.emit('remoteStream', {stream: mediaStream, id:userId})
                                 pc.addTrack(evt.track);
                             }
-
+                            
                         }
                         
                         // track receives objects of type MediaStreamTrack from the returned array
@@ -193,7 +240,33 @@ class ClientMesh {
                 }
             });  
 
+
+           
+            // Resposta ao envio de mensagens do servidor
+            this.socket.on("atualizar mensagens", function(dados){
+                var mensagem_formatada = $("<p />").text(dados.msg).addClass(dados.tipo);
+
+                //Add the message
+                $("#historico_mensagens").append(mensagem_formatada);
+                
+                //Scroll the chat to the bottom.
+                $('#historico_mensagens')[0].scrollTop = $('#historico_mensagens')[0].scrollHeight; 
+            });
+
+
+            this.socket.on("atualizar usuarios", function(usuarios){
+                $("#lista_usuarios").empty();
+                $("#lista_usuarios").append("<option value=''>Todos</option>");
+                    $.each(usuarios, function(indice){
+                    var opcao_usuario = $("<option />").text(usuarios[indice]);
+                    $("#lista_usuarios").append(opcao_usuario);
+                });
+            }); 
+
+
+
         });
+
 
     }
 
@@ -212,7 +285,10 @@ class ClientMesh {
             this.emit('localStream', mediaStream);
             this.connectSocketToSignaling(mediaStream);
             console.log("Pegando userMedia com constraints:", { video: true,audio: true});
-        }).catch(e => console.log('Error: ',e));
+            
+        })
+        .catch(e => console.log('Error: ',e));
+        
     }
 } 
 

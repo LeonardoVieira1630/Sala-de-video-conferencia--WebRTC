@@ -3,17 +3,17 @@
 const localVideo = document.getElementById('localVideo');
 const room = 'Sala-do-leo'; //prompt("Enter room name:");
 const cm = new ClientMesh(room);
+//const socket=0;
 
 
 //Getting the user media:
-function MediaOfTheUser(mediaStream) {
-    const localStream = mediaStream;
+function mediaOfTheUser(mediaStream) {
     localVideo.srcObject = mediaStream;
 }
 
 
 //Function to get the remote stream:
-function RemoteStream (evt) {    
+function remoteStream (evt) {    
     console.log('User id: ', evt.id);
 
     //Creating and Setting the new video.
@@ -39,18 +39,25 @@ function removeFromHtml(userId) {
 //Starting the client
 cm.startLocalStream();
 
-
     
 cm.on('localStream', evt=>{
-    MediaOfTheUser(evt);
+    mediaOfTheUser(evt);
 });
 
 
 cm.on('remoteStream', (evt)=>{
-    RemoteStream(evt);
+    remoteStream(evt);
 });
 
 
 cm.on('user-left', evt=>{
     removeFromHtml(evt);
 });
+
+/*
+cm.on('Manda', evt=> {
+    console.log('chegou no cliente essa desgraçada');
+});
+*/
+
+
