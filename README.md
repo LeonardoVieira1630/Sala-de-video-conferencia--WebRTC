@@ -18,6 +18,8 @@ This project is a a WebRTC - Mesh room. In other words, this is a video conferen
 
 -> Video and audio.
 
+-> Chat.
+
 -> WebRTC
 
 &nbsp;
