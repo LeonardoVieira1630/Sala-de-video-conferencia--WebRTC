@@ -56,62 +56,68 @@ class ClientMesh {
         var socket = this.socket;// TODO
 
         
-        // Quando dou submit na mensagem:
-        $("form#chat").submit(function(e){
-            e.preventDefault(); // para não enviar o formulário 
+        
+        
 
-            var mensagem = $(this).find("#texto_mensagem").val();
-            var usuario = $("#lista_usuarios").val(); // Usuário selecionado na lista lateral direita
+        var form = document.getElementById('chat');
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            var mensagem = document.getElementById('texto_mensagem').value;
+            var usuário = document.getElementById('lista_usuários').value; // Usuário selecionado na lista lateral direita
 
             // Evento acionado no servidor para o envio da mensagem
             // junto com o nome do usuário selecionado da lista
-            socket.emit("enviar mensagem", {msg: mensagem, usu: usuario}, function(){
-                $("form#chat #texto_mensagem").val("");
+            socket.emit("enviar_mensagem", {msg: mensagem, usu: usuário}, function(){//TODO
+                
+                document.getElementById('texto_mensagem').value='';
             });
-            
-        }); 
 
+
+
+
+        });
+          
 
 
         //When someone connect:
         this.socket.on('connect', () => {
+
             this.localUserId = this.socket.id;
             //logando o id do user que entrou.
             console.log('localUser', this.localUserId);
 
-            console.log(this.socket)
 
-            $("form#login").submit(function(e){
-                e.preventDefault();
-                console.log('Entrou aqui');
-                //TODO: não funciona this.socket.emit
-                // Evento enviado quando o usuário insere um apelido
+            //Pega o nome do usuário que entrou para coloca-lo no chat.
+            var acesso = document.getElementById('login');
+            acesso.addEventListener('submit', (event) => {
 
-                
-                socket.emit('entrar', $(this).find("#apelido").val(), function(valido) { 
+                //Faz "para" o envio do formulário.
+                event.preventDefault();
+
+                //Emit que alguém entrou 
+                socket.emit('entrar', document.getElementById('apelido').value , function(valido) { 
+
+                    //Verifica a validade do nome digitado.
                     if(valido){
-                        
                         // Caso não exista nenhum usuário com o mesmo nome, o painel principal é exibido
-                        $("#acesso_usuario_hide").hide();
-                        $("#sala_chat").show();
+                        document.getElementById('acesso_usuário_hide').style.display = 'none';
+                        document.getElementById('sala_chat').style.display = 'block';
+
                     }else{
                         // Do contrário o campo de mensagens é limpo e é apresentado um alert
-                        $("#acesso_usuario").val("");
-                        alert("Nome já utilizado nesta sala");
+                        document.getElementById('acesso_usuário').value='';
+                        alert("Não é possível entra na sala com esse nome :/ ");
                     }
                 });
-                
-
             });
 
+
+            
             this.socket.on('user-joined', (room) => { 
                 const clients = room.clients;
                 const joinedUserId = room.joinedUserId;
                 console.log(joinedUserId, ' joined');
-
-                console.log(room.clients);
-
-                
+          
 
                 clients.forEach((userId) => {
                     //Who is entering now, goes inside the if.
@@ -166,7 +172,6 @@ class ClientMesh {
                 //With more then one, it runs and we send offers to connect
 
                 if (room.count >= 2) {
-                    console.log(room.count + ' Guys in the room');
                     const description = this.connections[joinedUserId].createOffer(); 
                     this.connections[joinedUserId].setLocalDescription(description)
                     .then(() => {
@@ -243,30 +248,61 @@ class ClientMesh {
 
            
             // Resposta ao envio de mensagens do servidor
-            this.socket.on("atualizar mensagens", function(dados){
-                var mensagem_formatada = $("<p />").text(dados.msg).addClass(dados.tipo);
+            this.socket.on("atualizar_mensagens", function(dados){
 
-                //Add the message
-                $("#historico_mensagens").append(mensagem_formatada);
+                // novo parágrafo.
+                var new_paragraph = document.createElement('p'); 
                 
+                //Definindo a classificação da mensagem.
+                if(dados.tipo == 'sistema') new_paragraph.setAttribute('class', 'sistema');
+                else new_paragraph.setAttribute('class', 'privada');
+
+                //add msg para o paragrafo.            
+                new_paragraph.appendChild(document.createTextNode(dados.msg)); 
+
+                //add novo paragrafo com msg para o histórico.
+                var histórico = document.getElementById('histórico_mensagens');
+                histórico.appendChild(new_paragraph);
+
                 //Scroll the chat to the bottom.
-                $('#historico_mensagens')[0].scrollTop = $('#historico_mensagens')[0].scrollHeight; 
+                histórico.scrollTop = histórico.scrollHeight;
+                
+
             });
 
 
-            this.socket.on("atualizar usuarios", function(usuarios){
-                $("#lista_usuarios").empty();
-                $("#lista_usuarios").append("<option value=''>Todos</option>");
-                    $.each(usuarios, function(indice){
-                    var opcao_usuario = $("<option />").text(usuarios[indice]);
-                    $("#lista_usuarios").append(opcao_usuario);
-                });
+            this.socket.on("atualizar_usuários", function(usuários){
+
+                //Pegando a lista de usuários no html.
+                var lista = document.getElementById('lista_usuários');
+
+                //Limpando a lista de usuários.
+                lista.options.length = 0;
+
+
+                //Criando options para os usuários.
+                var new_option = document.createElement('option'); 
+                new_option.setAttribute('class', 'font_participantes');
+
+                //Escrevendo título.
+                new_option.appendChild(document.createTextNode('Participantes:'));
+                lista.appendChild(new_option);
+    
+                console.log('=> Há ' + usuários.length + ' usuários na sala. <=')
+                
+                //Colocando os users no html um por um.
+                var i;
+                for ( i = 0; i < usuários.length; i++){
+                    var option_user = document.createElement('option');
+                    option_user.setAttribute('class', 'font_users');
+                    option_user.appendChild(document.createTextNode(usuários[i]));
+                    lista.appendChild(option_user);
+                }
+
             }); 
 
 
-
         });
-
 
     }
 

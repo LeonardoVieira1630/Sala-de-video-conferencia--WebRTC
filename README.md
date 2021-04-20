@@ -1,14 +1,15 @@
-# Sala WebRTC-Mesh:
+# **Sala WebRTC-Mesh:**
 
-
+&nbsp;
 <p align="center">
 <img src="https://img.shields.io/badge/contributors-1-brightgreen"/>
 <img src="https://img.shields.io/badge/version-1.0.0-blue"/>
 <img src="https://img.shields.io/github/languages/count/Ffquenome/WebRTC-Mesh"/>
 </p>
 
+&nbsp;
 
-# What is this for?
+# **What is this for?**
 
 This project is a a WebRTC - Mesh room. In other words, this is a video conferences room that uses Mesh architecture in its construction.
 
@@ -23,7 +24,7 @@ This project is a a WebRTC - Mesh room. In other words, this is a video conferen
 -> WebRTC
 
 &nbsp;
-## Modules and requirements:
+## **Modules and requirements:**
 
 -> Node.js
 
@@ -32,7 +33,7 @@ This project is a a WebRTC - Mesh room. In other words, this is a video conferen
 -> Express
 
 &nbsp;
-## Installation
+## **Installation**
 
 In the terminal, clone the project:
 
@@ -46,7 +47,7 @@ After it, download the modules:
 ```
 
 &nbsp;
-## Putting it to work!!
+## **Putting it to work!!**
 
 In the terminal type this:
 
@@ -59,7 +60,7 @@ This way, you will start the server.
 Now open: http://localhost:8080/ in work browser and that is it.
 
 &nbsp;
-## What is each file?
+## **What is each file?**
 
 We basically have 4 four main files:
 
@@ -73,7 +74,7 @@ We basically have 4 four main files:
 
 &nbsp;
 
-## Methods:
+## **Methods:**
 ### **startLocalStream()**
 
 Start the application and signalization:
@@ -105,9 +106,45 @@ cml.on("localStream", (evt) => {
   handleUserMedia(evt);
 });
 ```
+
 &nbsp;
 ## **Events**
 
+
+### **'localStream'**
+
+This event is triggered when we get the local stream. It receives an _MediaStream_ with an audio and video stream as an argument.
+
+&nbsp;
+
+
+| Parameters      |Type| Description                                           |
+| --------------- |------|-------------------------------------------------------|
+| _**evt**_       |Array| It is an array the has the media stream constraints {video: true, audio: true}.|
+
+
+&nbsp;
+#### **Exemple**
+
+In the exemple, the remote stream is received in the event and after ir, added in the DOM localVideo element.
+
+
+
+``` javascript
+cm.on('localStream', evt=>{
+    mediaOfTheUser(evt);
+});
+```
+
+
+The called function remoteStream is pretty simple and used like showed billow:
+```javascript
+function mediaOfTheUser(mediaStream) {
+    localVideo.srcObject = mediaStream;
+}
+```
+
+&nbsp;
 
 ### **'remoteStream'**
 
