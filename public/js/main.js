@@ -58,7 +58,7 @@ class ClientMesh {
         
         
         
-
+        /*
         var form = document.getElementById('chat');
         form.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -72,10 +72,8 @@ class ClientMesh {
                 document.getElementById('texto_mensagem').value='';
             });
 
-
-
-
         });
+        */
           
 
 
@@ -87,6 +85,8 @@ class ClientMesh {
             console.log('localUser', this.localUserId);
 
 
+
+            /*
             //Pega o nome do usuário que entrou para coloca-lo no chat.
             var acesso = document.getElementById('login');
             acesso.addEventListener('submit', (event) => {
@@ -110,6 +110,7 @@ class ClientMesh {
                     }
                 });
             });
+            */
 
 
             
@@ -248,56 +249,18 @@ class ClientMesh {
 
            
             // Resposta ao envio de mensagens do servidor
-            this.socket.on("atualizar_mensagens", function(dados){
+            this.socket.on("atualizar_mensagens", (dados)=> {
 
-                // novo parágrafo.
-                var new_paragraph = document.createElement('p'); 
-                
-                //Definindo a classificação da mensagem.
-                if(dados.tipo == 'sistema') new_paragraph.setAttribute('class', 'sistema');
-                else new_paragraph.setAttribute('class', 'privada');
-
-                //add msg para o paragrafo.            
-                new_paragraph.appendChild(document.createTextNode(dados.msg)); 
-
-                //add novo paragrafo com msg para o histórico.
-                var histórico = document.getElementById('histórico_mensagens');
-                histórico.appendChild(new_paragraph);
-
-                //Scroll the chat to the bottom.
-                histórico.scrollTop = histórico.scrollHeight;
-                
-
+                //Mandando atualizar la no client.
+                this.emit('atualizar_mensagens', dados);
+               
             });
 
+            //Resposta à atualização de usuários.
+            this.socket.on("atualizar_usuários", (usuários) => {
 
-            this.socket.on("atualizar_usuários", function(usuários){
-
-                //Pegando a lista de usuários no html.
-                var lista = document.getElementById('lista_usuários');
-
-                //Limpando a lista de usuários.
-                lista.options.length = 0;
-
-
-                //Criando options para os usuários.
-                var new_option = document.createElement('option'); 
-                new_option.setAttribute('class', 'font_participantes');
-
-                //Escrevendo título.
-                new_option.appendChild(document.createTextNode('Participantes:'));
-                lista.appendChild(new_option);
-    
-                console.log('=> Há ' + usuários.length + ' usuários na sala. <=')
-                
-                //Colocando os users no html um por um.
-                var i;
-                for ( i = 0; i < usuários.length; i++){
-                    var option_user = document.createElement('option');
-                    option_user.setAttribute('class', 'font_users');
-                    option_user.appendChild(document.createTextNode(usuários[i]));
-                    lista.appendChild(option_user);
-                }
+                //Mandando atualizar la no client.
+                this.emit('atualizar_usuários', usuários);
 
             }); 
 
