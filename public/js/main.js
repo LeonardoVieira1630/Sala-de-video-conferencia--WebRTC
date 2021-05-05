@@ -14,15 +14,19 @@ class ClientMesh {
       this.connections = [];
       this.events = {};
       this.dataChannels = []; //Leo
+      this.contt = 0;
     }
   
     //Internal Functions that we will call:
   
     //Function to work with the the ice candidate:
     gotIceCandidate(fromId, candidate) {
-      this.connections[fromId]
-        .addIceCandidate(new RTCIceCandidate(candidate))
-        .catch((e) => console.log("Error: ", e));
+        //if (this.connections[fromId]){
+            //console.log('entra no ice');
+            this.connections[fromId]
+            .addIceCandidate(new RTCIceCandidate(candidate))
+            .catch((e) => console.log("Error: ", e));
+        //}
     }
   
     //Function to handle with the events:
@@ -56,105 +60,124 @@ class ClientMesh {
   
     //Main Functions:
   
+    createConnection(userId, mediaStream) {
+
+        const pc = new RTCPeerConnection();
+        let track = 0;
+
+
+        pc.onicecandidate = (evt) => {
+            if (evt.candidate) {
+                console.log(this.socket.id, " Send candidate to ", userId);
+                this.socket.emit("candidate", {
+                type: "candidate",
+                candidate: evt.candidate,
+                toId: userId,
+                });
+            }
+        };
+
+        pc.ontrack = (evt) => {
+            // add the first track to my corresponding user.
+            if (track == 0) {
+                pc.addTrack(evt.track);
+                track = 1;
+            }
+            // add the second track to my corresponding user.
+            else {
+                this.emit("remoteStream", { stream: mediaStream, id: userId });
+                pc.addTrack(evt.track);
+            }
+        };
+
+        // track receives objects of type MediaStreamTrack from the returned array
+        // by .getTracks. This addTrack function "calls" onTrack.
+        for (const track of mediaStream.getTracks()) {
+            pc.addTrack(track);
+        }
+
+
+    
+        pc.ondatachannel = (evt) => {
+          const dc = evt.channel;
+          dc.onopen = () => {
+            console.log("dataChannel aberto com local peer");
+          };
+          dc.onmessage = (evt) => {
+            this.emit("message", evt.data);
+          };
+          dc.onclose = () => {
+            console.log("dataChannel fechado com local peer");
+          };
+          this.dataChannels[userId] = dc;
+        };
+    
+        this.connections[userId] = pc;
+        
+        return pc;
+    }
+    
     //It will control the main part of the client (Signaling parts && Offer/ Answer && Connections).
     connectSocketToSignaling(mediaStream) {
       this.socket = io.connect();
-      var socket = this.socket; // TODO
-  
-
-
-        this.localUserId = this.socket.id;
-        //logando o id do user que entrou.
-        console.log("localUser", this.localUserId);
   
         this.socket.on("user-joined", (room) => {
-            const clients = room.clients;
+            //const clients = room.clients;
             const joinedUserId = room.joinedUserId;
             console.log(joinedUserId, " joined");
 
-            //const userId = joinedUserId;
-            clients.forEach((userId) => {
             
-                //Who is entering now, goes inside the if.
-                //The others (that are already in the room) don't go inside.
-                if (!this.connections[userId] && userId != this.socket.id) {
-                    //
-                    const pc = new RTCPeerConnection(mediaStream);
-                    let track = 0;
 
-                    //console.log('Passou aqui ----');
+            const userId = joinedUserId; 
+            //Who is entering now, goes inside the if.
+            //The others (that are already in the room) don't go inside.
+            if (userId != this.socket.id) {
+                
+                const pc = this.createConnection(joinedUserId, mediaStream);
 
-                    pc.ontrack = (evt) => {
-                    // add the first track to my corresponding user.
-                    if (track == 0) {
-                        pc.addTrack(evt.track);
-                        track = 1;
-                    }
 
-                    // add the second track to my corresponding user.
-                    else {
-                        this.emit("remoteStream", { stream: mediaStream, id: userId });
-                        pc.addTrack(evt.track);
-                    }
-                    };
+                this.contt++;
+                console.log('Passou aqui ----', this.contt);
 
-                    // track receives objects of type MediaStreamTrack from the returned array
-                    // by .getTracks. This addTrack function "calls" onTrack.
-                    for (const track of mediaStream.getTracks()) {
-                    pc.addTrack(track);
-                    }
 
-                    //criando data channel do peer que acabou de entrar.
-                    const dc = pc.createDataChannel("teste1");
+                //criando data channel do peer que acabou de entrar.
+                const dc = pc.createDataChannel("teste1");
 
-                    dc.onopen = () => {
+                dc.onopen = () => {
                     console.log("data channel aberto");
-                    };
+                };
 
-                    dc.onmessage = (evt) => {
+                dc.onmessage = (evt) => {
                     this.emit("message", evt.data);
-                    };
+                };
 
-                    dc.onclose = () => {
+                dc.onclose = () => {
                     console.log("Data channel fechado");
-                    };
-                    this.dataChannels[userId] = dc;
+                };
+                this.dataChannels[userId] = dc;
 
-                    
-                    this.connections[userId] = pc;
-                    this.connections[userId].onicecandidate = (evt) => {
-                        if (evt.candidate && this.socket.id != userId) {
-                            console.log(this.socket.id, " Send candidate to ", userId);
-                            this.socket.emit("candidate", {
-                            type: "candidate",
-                            candidate: evt.candidate,
-                            toId: userId,
-                            });
-                        }
-                    };
-                }
-            });
-  
+                this.connections[userId] = pc;
 
-            
-          //With more then one, it runs and we send offers to connect
-  
-          if (room.count >= 2 && this.socket.id != joinedUserId) {
-            //
-            const description = this.connections[joinedUserId].createOffer();
-  
-            this.connections[joinedUserId]
-              .setLocalDescription(description)
-              .then(() => {
-                console.log(this.socket.id, " Send offer to ", joinedUserId);
-                this.socket.emit("offer", {
-                  type: "offer",
-                  toId: joinedUserId,
-                  description: this.connections[joinedUserId].localDescription,
-                });
-              })
-              .catch((e) => console.log("Error: ", e));
-          }
+
+
+                this.connections[joinedUserId].createOffer()
+                .then((description) => {
+                    return this.connections[joinedUserId]
+                    .setLocalDescription(description)
+                })
+                .then(() => {
+                    console.log(this.socket.id, " Send offer to ", joinedUserId);
+                    this.socket.emit("offer", {
+                    type: "offer",
+                    toId: joinedUserId,
+                    description: this.connections[joinedUserId].localDescription,
+                    });
+                })
+                .catch((e) => console.log("Error: ", e));
+
+
+
+            }
         });
   
 
@@ -164,34 +187,49 @@ class ClientMesh {
       });
 
 
+      
       this.socket.on("candidate", (data) => {
         const fromId = data.fromId;
         //Works with the candidate part:
         console.log(this.socket.id, " Receive Candidate from ", fromId);
+        
         if (data.candidate) {
           this.gotIceCandidate(fromId, data.candidate);
         }
+        
+       /*
+        
+        if (pc) {
+        console.log("Recebido iceCandidate de:", fromId);
+        pc.addIceCandidate(new RTCIceCandidate(ice.candidate)).catch((e) =>
+          console.log("Error: ", e)
+        );}*/
+        
+      
       
       });
 
       this.socket.on("offer", (data) => {
         const fromId = data.fromId;
-        if (data.fromId !== this.localUserId && data.description) {
-          const connection = this.connections[fromId];
-          console.log(this.socket.id, " Receive offer from ", fromId);
-          connection.setRemoteDescription(
-            new RTCSessionDescription(data.description)
-          );
+        if (data.description) {
+            this.connections[fromId] = this.createConnection(fromId, mediaStream);
 
-          const description = connection.createAnswer();
-          connection
-            .setLocalDescription(description)
+            const connection = this.connections[fromId];
+            console.log(this.socket.id, " Receive offer from ", fromId);
+            connection.setRemoteDescription(
+            new RTCSessionDescription(data.description)
+            );
+
+            connection.createAnswer()
+            .then((description) => {
+                return connection.setLocalDescription(description);
+            })
             .then(() => {
-              this.socket.emit("answer", {
+                this.socket.emit("answer", {
                 type: "answer",
                 toId: fromId,
                 description: connection.localDescription,
-              });
+                });
             })
             .catch((e) => console.log("Error: ", e));
         }
