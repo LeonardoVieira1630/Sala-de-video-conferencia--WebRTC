@@ -14,7 +14,6 @@ function mediaOfTheUser(mediaStream) {
 
 //Function to get the remote stream:
 function remoteStream (evt) {    
-    console.log('User id: ', evt.id);
 
     //Creating and Setting the new video.
     const remoteVideo  = document.createElement('video');
