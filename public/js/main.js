@@ -14,7 +14,6 @@ class ClientMesh {
       this.connections = [];
       this.events = {};
       this.dataChannels = []; //Leo
-      this.contt = 0;
     }
   
     //Internal Functions that we will call:
@@ -60,6 +59,7 @@ class ClientMesh {
   
     //Main Functions:
   
+    //Called to Create a new connection
     createConnection(userId, mediaStream) {
 
         const pc = new RTCPeerConnection();
@@ -97,17 +97,16 @@ class ClientMesh {
         }
 
 
-    
         pc.ondatachannel = (evt) => {
           const dc = evt.channel;
           dc.onopen = () => {
-            console.log("dataChannel aberto com local peer");
+            console.log("DataChannel aberto com ", userId );
           };
           dc.onmessage = (evt) => {
             this.emit("message", evt.data);
           };
           dc.onclose = () => {
-            console.log("dataChannel fechado com local peer");
+            console.log("DataChannel fechado");
           };
           this.dataChannels[userId] = dc;
         };
@@ -124,9 +123,7 @@ class ClientMesh {
         this.socket.on("user-joined", (room) => {
             //const clients = room.clients;
             const joinedUserId = room.joinedUserId;
-            console.log(joinedUserId, " joined");
-
-            
+            console.log(joinedUserId, " joined");        
 
             const userId = joinedUserId; 
             //Who is entering now, goes inside the if.
@@ -135,16 +132,11 @@ class ClientMesh {
                 
                 const pc = this.createConnection(joinedUserId, mediaStream);
 
-
-                this.contt++;
-                console.log('Passou aqui ----', this.contt);
-
-
                 //criando data channel do peer que acabou de entrar.
                 const dc = pc.createDataChannel("teste1");
 
                 dc.onopen = () => {
-                    console.log("data channel aberto");
+                    console.log("Data channel aberto com ", joinedUserId);
                 };
 
                 dc.onmessage = (evt) => {
@@ -187,7 +179,7 @@ class ClientMesh {
       });
 
 
-      
+      //Listening the candidate event.
       this.socket.on("candidate", (data) => {
         const fromId = data.fromId;
         //Works with the candidate part:
@@ -196,19 +188,12 @@ class ClientMesh {
         if (data.candidate) {
           this.gotIceCandidate(fromId, data.candidate);
         }
-        
-       /*
-        
-        if (pc) {
-        console.log("Recebido iceCandidate de:", fromId);
-        pc.addIceCandidate(new RTCIceCandidate(ice.candidate)).catch((e) =>
-          console.log("Error: ", e)
-        );}*/
-        
-      
       
       });
 
+
+
+      //Listening the answer.
       this.socket.on("offer", (data) => {
         const fromId = data.fromId;
         if (data.description) {
@@ -235,6 +220,8 @@ class ClientMesh {
         }
       });
 
+
+      //Listening the answer.
       this.socket.on("answer", (data) => {
         if (data.fromId !== this.localUserId ) {
           const fromId = data.fromId;
@@ -246,6 +233,7 @@ class ClientMesh {
             .catch((e) => console.log("Error: ", e));
         }
       });
+
 
       // Resposta ao envio de mensagens do servidor
       this.socket.on("atualizar_mensagens", (dados) => {
