@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 
-    <link rel="shortcut icon" href="#" />
+    <link rel="shortcut icon" href="#" /> <!-- Para que o código não preciso do favicon.io-->
 
     <head>
 
@@ -24,13 +24,14 @@
                     <input type='text' placeholder='Insira seu apelido' name='apelido' id='apelido' />
                     <input type='submit' value='Entrar' />
                 </form>
-            </div><!---->
+            </div>
 
         </div>
 
-        <div id='sala_chat' ><!---->
+        <div id='sala_chat' >
 
             <img class= 'image-center' src="/images/web_rtc-logo.png" >
+            <!--
             <tr>
 
                 <td>
@@ -48,6 +49,16 @@
                 </td>
             
             </tr>
+            -->
+
+            <h1 id = 'font'> Video local</h1>
+                <video id="localVideo" autoplay muted playsinline></video>
+            <div id = "videoRemoto"></div>
+
+
+
+
+
 
             <div id="histórico_mensagens" >
                 

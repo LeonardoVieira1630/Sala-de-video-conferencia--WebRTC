@@ -1,7 +1,8 @@
 
+
 video {
-    max-width: 100%;
-    width: 320px;
+    /*max-width: 100%;*/
+    width: 400px;
     margin-bottom: 20px;
     margin-left: 10px;
 
@@ -113,4 +114,7 @@ image-center{
 }
 .font_users{
 	font-size: 14px;
+}
+#videoRemoto{
+	float: left;
 }

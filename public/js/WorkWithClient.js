@@ -157,11 +157,6 @@ cm.on('user-left', evt=>{
     removeFromHtml(evt);
 });
 
-/*
-cm.on('Manda', evt=> {
-    console.log('chegou no cliente essa desgraçada');
-});
-*/
 
 cm.on("atualizar_mensagens", (evt) => {
   atualizar_mensagens(evt);
