@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 
+    <link rel="shortcut icon" href="#" />
+
     <head>
 
         <title>Realtime communication with WebRTC</title>
@@ -29,15 +31,23 @@
         <div id='sala_chat' ><!---->
 
             <img class= 'image-center' src="/images/web_rtc-logo.png" >
+            <tr>
 
-            <div class ="videos">
-                
+                <td>
 
-                <h1 id = 'font'> Video local</h1>
+                    <h1 id = 'font'> Video local</h1>
 
-                <video id="localVideo" autoplay muted playsinline></video>
-            </div>
+                    <video id="localVideo" autoplay muted playsinline></video>
+
+                </td>
+
+                <td>
+
+                   <div id = "videoRemoto"></div>
+
+                </td>
             
+            </tr>
 
             <div id="histórico_mensagens" >
                 

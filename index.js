@@ -5,17 +5,90 @@ const express = require('express'); // pegando a biblioteca express
 const server = express();
 const http = require('http').Server(server); //server recebendo express
 const io = require('socket.io')(http);
-var usuários = []; // Lista de usuários
-var ultimas_mensagens = []; // Lista com ultimas mensagens enviadas no chat
+const usuários = new Map(); // Lista de usuários (nome + socket.id)
+const nomes = []; // Contem os nomes. Usada também para o numero de users na sala.
+const stats = new Map(); //Contem as estatísticas Do WebRTC de cada connection.
+let ultimas_mensagens = []; // Lista com ultimas mensagens enviadas no chat
+
+server.use(express.json());
 
 
+//Pegando os clientes da sala.
+server.get("/clients", function(req,res){	 
+	
+	let temp = new Map();
+	usuários.forEach((socket, apelido)=>{
+		temp[apelido] = socket.id;
+	})
+
+	if (!temp) return res.status(204).json();
+
+	let obj = {
+		'Os usuários na sala são': temp
+	}
+	res.json(obj);
+
+});
+
+//Pegando as stats dos clientes da sala.
+server.get("/stats", function(req,res){	
+
+	let temp = new Map();
+	stats.forEach((stat, userId)=>{
+		temp[userId] = stat;
+	})
+
+	if (!temp) return res.status(204).json();
+
+	let obj = {
+		'As estatísticas dos users são ': temp
+	}
+	res.json(obj);
+});
+
+
+//Pegando um usuário específico da sala + suas stats.
+server.get("/clients/:id", function(req,res){	
+
+	let{ id } = req.params;
+
+	if (!usuários.get(id)){
+		let obj = 'Vixi, esse usuário não existe na sala.';
+		if (!usuários[id]) return res.status(204).json();
+		return res.json(obj);
+	} 
+
+	let temp = new Map();
+	temp[id] = usuários.get(id).id;
+
+	let stat = stats.get(temp[id]);
+
+	let obj = {
+		'O usuário pedido é ': temp ,
+		'Suas estatísticas são ': stat
+	}
+
+	res.json(obj);
+
+});
+
+
+//Pegando a quantidade de pessoas na sala.
+server.get("/length", function(req,res){
+	let obj = {
+		'Numero de clientes na sala atualmente' : Object.keys(nomes).length
+	};
+	
+	res.json(obj);
+});
+ 
 
 server.use(express.static('public'));
 
 
 //Porta onde esta sendo executado
-http.listen(8080, () => {
-  console.log('Server está la na porta 8080');
+http.listen(3000, () => {
+  console.log('Server está la na porta 3000');
 });
 
 
@@ -25,10 +98,12 @@ server.get('/', function(req, res){
 });
 
 
+
 //Aqui acontece se tiver uma connection (io.on). Basicamente controla a entrada e a saida de pessoas.
 io.on('connection', function (socket) {
     io.emit('user-joined', { clients:  Object.keys(io.sockets.clients().sockets), count: io.engine.clientsCount, joinedUserId: socket.id});
     
+	
     
     socket.on('candidate', function(data) { 
         io.to(data.toId).emit('candidate', { fromId: socket.id, ...data });
@@ -36,28 +111,28 @@ io.on('connection', function (socket) {
 
 
     socket.on('offer', function(data) { 
-        //console.log("Enviando Offer para: ", data.toId);
-       //TODO:não emitir para todo mundo da sala.
+        
         io.to(data.toId).emit('offer', { fromId: socket.id, ...data });
     });
 
     socket.on('answer', function(data) { 
-        //console.log("Enviando Answer para: ", data.toId);
         io.to(data.toId).emit('answer', { fromId: socket.id, ...data });
     });
 
 
     socket.on('disconnect', function() {
+		
         io.sockets.emit('user-left', socket.id);
 
-        delete usuários[socket.apelido];
+        delete nomes[socket.apelido];
+		usuários.delete(socket.apelido); 
 		var mensagem = "[ " + pegarDataAtual() + " ] " + socket.apelido + " saiu da sala";
 		var obj_mensagem = {msg: mensagem, tipo: 'sistema'};
 
 
 		// No caso da saída de um usuário, a lista de usuários é atualizada
 		// junto de um aviso em mensagem para os participantes da sala		
-		io.sockets.emit("atualizar_usuários", Object.keys(usuários));
+		io.sockets.emit("atualizar_usuários", Object.keys(nomes));
 		io.sockets.emit("atualizar_mensagens", obj_mensagem);
 
 		armazenaMensagem(obj_mensagem);
@@ -67,14 +142,22 @@ io.on('connection', function (socket) {
 
     // Método de resposta ao evento de entrar
 	socket.on('entrar', function(apelido, callback){
-		if(!(apelido in usuários)){
+		if(!usuários.get(apelido)){
+			
+			
 			socket.apelido = apelido;
-			usuários[apelido] = socket; // Adicionando o nome de usuário a lista armazenada no servidor
+			nomes[apelido] = socket;			
+			usuários.set(apelido, socket); // Adicionando o nome de usuário a lista armazenada no servidor
+			usuários.forEach(i=>{obj = i})
+
 
 			var mensagem = "[ " + pegarDataAtual() + " ] " + apelido + " acabou de entrar na sala";
 			var obj_mensagem = {msg: mensagem, tipo: 'sistema'};
 
-			io.sockets.emit("atualizar_usuários", Object.keys(usuários)); // Enviando a nova lista de usuários
+			io.sockets.emit("atualizar_usuários", Object.keys(nomes)); // Enviando a nova lista de usuários
+			
+			
+
 			io.sockets.emit("atualizar_mensagens", obj_mensagem); // Enviando mensagem anunciando entrada do novo usuário
 
 			armazenaMensagem(obj_mensagem); // Guardando a mensagem na lista de histórico
@@ -85,6 +168,9 @@ io.on('connection', function (socket) {
 		}
 
 	});
+
+
+	
 
 
 	socket.on("enviar_mensagem", function(dados, callback){
@@ -102,13 +188,17 @@ io.on('connection', function (socket) {
 		}else{
 			obj_mensagem.tipo = 'privada';
 			socket.emit("atualizar_mensagens", obj_mensagem); // Emitindo a mensagem para o usuário que a enviou
-			usuários[usuário].emit("atualizar_mensagens", obj_mensagem); // Emitindo a mensagem para o usuário escolhido
+			usuários.get(usuário).emit("atualizar_mensagens", obj_mensagem); // Emitindo a mensagem para o usuário escolhido
 		}
 		
 		callback();
 	});
 
-    
+
+	socket.on("stats", function(dados, userId){
+		functionStats(dados,userId);
+	});
+
 
 });
 
@@ -136,3 +226,13 @@ function armazenaMensagem(mensagem){
 	ultimas_mensagens.push(mensagem);
 }
 
+
+function functionStats(dados,userId){
+
+	const peers = {};
+	peers.userId = userId;
+	peers.stats = dados;
+	
+	stats.set(peers.userId, peers.stats);
+
+};

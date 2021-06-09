@@ -24,7 +24,7 @@ function remoteStream (evt) {
     remoteVideo.playsinline = true;
 
     //Putting it on the html page:
-    document.querySelector('.videos').appendChild(remoteVideo);
+    document.querySelector('#videoRemoto').appendChild(remoteVideo);
 }
 
 

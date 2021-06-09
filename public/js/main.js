@@ -4,23 +4,23 @@
     
 */
 
-
-
 class ClientMesh {
   //Variables that we will use in the code:
   constructor() {
     this.localStream;
     this.localUserId;
-    this.connections = [];
+    this.connections = new Map();
     this.events = {};
-    this.dataChannels = []; //Leo
+    this.dataChannels = new Map(); 
+    this.remoteStreams = new Map();
+
   }
 
   //Internal Functions that we will call:
 
   //Function to work with the the ice candidate:
   gotIceCandidate(fromId, candidate) {
-    this.connections[fromId]
+    this.connections.get(fromId)
     .addIceCandidate(new RTCIceCandidate(candidate))
   }
 
@@ -54,9 +54,9 @@ class ClientMesh {
 
   async creatingAnswerFunction(data, mediaStream){
     const fromId = data.fromId;
-    this.connections[fromId] = this.createConnection(fromId, mediaStream);
+    this.connections.get(fromId) = this.createConnection(fromId, mediaStream);
 
-    const connection = this.connections[fromId];
+    const connection = this.connections.get(fromId);
     console.log(this.socket.id, " Receive offer from ", fromId);
 
     await connection.setRemoteDescription(
@@ -88,6 +88,70 @@ class ClientMesh {
     });
   };
 
+  async callStats(pc, userId){ 
+    //Parte de estatísticas
+    const dadosIntervalo = new Object;
+    const dadoInicial = {
+      packetsLost: 0,
+      packetsReceived: 0, 
+      packetsSent: 0,
+      bytesSent: 0,
+      bytesReceived: 0,
+      dataChannelsOpened: 0,
+      dataChannelsClosed: 0,
+      remoteCandidateId: null,
+      localCandidateId: null,
+
+    };
+    
+    setInterval(() => {
+      this.statistics(pc,userId,dadoInicial,dadosIntervalo);
+    },10000) // a cada 30 seg é printado no console.
+
+  }
+
+
+  //Função para pegar as estatísticas do WebRTC
+  async statistics(pc,userId,dadoInicial,dadosIntervalo){
+    
+    if (this.connections.get(userId)) {
+      const stats = await pc.getStats(null); //Pegando todas as estatísticas da conexão.
+
+      stats.forEach(report => {
+        if ( report.type == "inbound-rtp" ){
+          dadosIntervalo.packetsLost = report.packetsLost - dadoInicial.packetsLost;
+          dadoInicial.packetsLost = report.packetsLost;
+        } 
+      if ( report.type == "transport" ){
+          let rpr = report.packetsReceived;
+          let rps = report.packetsSent;
+          let rbs = report.bytesSent;
+          let rbr = report.bytesReceived;
+
+          dadosIntervalo.packetsReceived = rpr - dadoInicial.packetsReceived;
+          dadosIntervalo.packetsSent = rps - dadoInicial.packetsSent;
+          dadosIntervalo.bytesSent = rbs - dadoInicial.bytesSent;
+          dadosIntervalo.bytesReceived =rbr - dadoInicial.bytesReceived;
+
+          dadoInicial.packetsReceived = rpr;
+          dadoInicial.packetsSent = rps;
+          dadoInicial.bytesSent = rbs;
+          dadoInicial.bytesReceived = rbr;
+        } 
+        if(report.type == "peer-connection"){
+          dadosIntervalo.dataChannelsOpened = report.dataChannelsOpened;
+          dadosIntervalo.dataChannelsClosed = report.dataChannelsClosed;
+        }
+        if(report.type == "candidate-pair"){
+          dadosIntervalo.localCandidateId = report.localCandidateId;
+          dadosIntervalo.remoteCandidateId = report.remoteCandidateId;
+        }
+      })
+      this.socket.emit('stats',dadosIntervalo, userId);
+    }  
+  
+  };
+
 
   //Main Functions:
 
@@ -95,7 +159,6 @@ class ClientMesh {
   createConnection(userId, mediaStream) {
     const pc = new RTCPeerConnection();
     let track = 0;
-
 
     pc.onicecandidate = (evt) => {
       if (evt.candidate) {
@@ -110,14 +173,19 @@ class ClientMesh {
 
     pc.ontrack = (evt) => {
       // add the first track to my corresponding user.
-      if (track == 0) {
-        pc.addTrack(evt.track);
+      const remoteStream = this.remoteStreams.get(userId);
+      if (remoteStream) {
+        remoteStream.addTrack(evt.track);
         track = 1;
       }
+      
       // add the second track to my corresponding user.
       else {
-        this.emit("remoteStream", { stream: mediaStream, id: userId });
-        pc.addTrack(evt.track);
+        const remoteStream = new MediaStream;
+        this.emit("remoteStream", { stream: remoteStream, id: userId });
+        remoteStream.addTrack(evt.track);
+        this.remoteStreams.set(userId, remoteStream);
+
       }
     };
 
@@ -139,13 +207,16 @@ class ClientMesh {
       dc.onclose = () => {
         console.log("DataChannel fechado");
       };
-      this.dataChannels[userId] = dc;
+      this.dataChannels.set(userId,dc);
     };
 
-    this.connections[userId] = pc;
-    
+    this.connections.set(userId, pc);
+
+    this.callStats(pc, userId);
+
     return pc;
   }
+  
   
   //It will control the main part of the client (Signaling parts && Offer/ Answer && Connections).
   connectSocketToSignaling(mediaStream) {
@@ -177,19 +248,34 @@ class ClientMesh {
         dc.onclose = () => {
           console.log("Data channel fechado");
         };
-        this.dataChannels[userId] = dc;
+        this.dataChannels.set(userId,dc);
 
-        this.connections[userId] = pc;
+        this.connections.set(userId, pc);
 
+        this.creatingOfferFunction(this.connections.get(userId) , joinedUserId);
 
-        this.creatingOfferFunction(this.connections[userId] , joinedUserId);
       }
+      
     });
 
 
     //Remove the video from the guy that is going out.
     this.socket.on("user-left", (userId) => {
       this.emit("user-left", userId);
+      this.remoteStreams.delete(userId.id);
+      this.dataChannels.delete(userId);
+      if (userId == this.socket.id){
+        this.connections.forEach(user => {
+          this.connections.delete(user);
+        })
+        console.log('entra aqui')
+      }
+      else this.connections.delete(userId);
+
+      console.log('Conexões do usuário: ',this.connections);
+      console.log('DataChannels do usuário: ',this.dataChannels)
+      
+
     });
 
 
@@ -208,7 +294,31 @@ class ClientMesh {
 
     //Listening the offer and create an answer.
     this.socket.on("offer", (data) => {
-      this.creatingAnswerFunction(data, mediaStream);  
+      //this.creatingAnswerFunction(data, mediaStream);  
+      const fromId = data.fromId;
+        if (data.description) {
+          this.connections.set(fromId, this.createConnection(fromId, mediaStream));
+
+          const connection = this.connections.get(fromId);
+          console.log(this.socket.id, " Receive offer from ", fromId);
+          connection.setRemoteDescription(
+          new RTCSessionDescription(data.description)
+          );
+
+          connection.createAnswer()
+          .then((description) => {
+              return connection.setLocalDescription(description);
+          })
+          .then(() => {
+              this.socket.emit("answer", {
+              type: "answer",
+              toId: fromId,
+              description: connection.localDescription,
+              });
+          })
+          .catch((e) => console.log("Error: ", e));
+
+        }
     });
 
 
@@ -216,7 +326,7 @@ class ClientMesh {
     this.socket.on("answer", (data) => {
       const fromId = data.fromId;
       console.log("Resposta recebida de:", fromId);
-      const connection = this.connections[fromId];
+      const connection = this.connections.get(fromId);
 
       connection
       .setRemoteDescription(new RTCSessionDescription(data.description))
@@ -239,20 +349,23 @@ class ClientMesh {
 
 
   //Function to start every thing:
-  async startLocalStream() {
-    let media = await navigator.mediaDevices
-    .getUserMedia({
-      video: true,
-      audio: true,
-    });
-  
-    this.localStream = media;
-    this.emit("localStream", media);
-    this.connectSocketToSignaling(media);
-    console.log("Pegando userMedia com constraints:", {
-      video: true,
-      audio: true,
-    });    
+   startLocalStream() {
+
+    navigator.mediaDevices
+        .getUserMedia({
+          video: true,
+          audio: true,
+        })
+        .then((mediaStream) => {
+          this.localStream = mediaStream;
+          this.emit("localStream", mediaStream);
+          this.connectSocketToSignaling(mediaStream);
+          console.log("Pegando userMedia com constraints:", {
+            video: true,
+            audio: true,
+          });
+        })
+        .catch((e) => console.log("Error: ", e));
   }
 
 
