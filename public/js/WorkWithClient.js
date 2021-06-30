@@ -3,7 +3,6 @@
 const localVideo = document.getElementById('localVideo');
 const room = 'Sala-do-leo'; //prompt("Enter room name:");
 const cm = new ClientMesh(room);
-//const socket=0;
 
 
 //Getting the user media:

@@ -9,6 +9,8 @@ const usuários = new Map(); // Lista de usuários (nome + socket.id)
 const nomes = []; // Contem os nomes. Usada também para o numero de users na sala.
 const stats = new Map(); //Contem as estatísticas Do WebRTC de cada connection.
 let ultimas_mensagens = []; // Lista com ultimas mensagens enviadas no chat
+var peers = 0; //Armazena informações sobre os peers.
+const Latência = new Map(); //Contem as informações de latência de cada peer.
 
 server.use(express.json());
 
@@ -103,7 +105,6 @@ server.get('/', function(req, res){
 io.on('connection', function (socket) {
     io.emit('user-joined', { clients:  Object.keys(io.sockets.clients().sockets), count: io.engine.clientsCount, joinedUserId: socket.id});
     
-	
     
     socket.on('candidate', function(data) { 
         io.to(data.toId).emit('candidate', { fromId: socket.id, ...data });
@@ -123,9 +124,11 @@ io.on('connection', function (socket) {
     socket.on('disconnect', function() {
 		
         io.sockets.emit('user-left', socket.id);
-
         delete nomes[socket.apelido];
 		usuários.delete(socket.apelido); 
+		stats.delete(socket.id); 
+		Latência.delete(socket.id); 
+
 		var mensagem = "[ " + pegarDataAtual() + " ] " + socket.apelido + " saiu da sala";
 		var obj_mensagem = {msg: mensagem, tipo: 'sistema'};
 
@@ -170,8 +173,6 @@ io.on('connection', function (socket) {
 	});
 
 
-	
-
 
 	socket.on("enviar_mensagem", function(dados, callback){
 
@@ -195,24 +196,63 @@ io.on('connection', function (socket) {
 	});
 
 
+	//Escuta quando as stats devem ser atualizadas.
 	socket.on("stats", function(dados, userId){
-		functionStats(dados,userId);
+		let dado = functionStats(dados,userId);
+		socket.emit("atualizar_hora", (userId, dado))
 	});
 
+	//Usada para achar a latência
+	socket.on('atualizar_hora', function(userId,dado){
+		compararTempo(userId,dado);
+	});
+	
 
 });
 
+
+//Compara o tempo entre a hora atual e a hora anterior
+function compararTempo(hora){
+	const horaAqui = pegarTempo();
+
+    let conta = horaAqui + "-" + hora;
+    let res = (horaAqui-hora)/2;
+
+	if(res<0){
+		let temp = horaAqui*10-hora;
+		res = temp;
+	}
+
+	Latência.set(peers,res);
+	//console.log(conta);
+}
+
+
+//Pega o tempo atual
+function pegarTempo(){
+	const dataAtual = new Date();
+	const segundo = (dataAtual.getSeconds()<10 ? '0' : '') + dataAtual.getSeconds();
+	const milliseconds = (dataAtual.getMilliseconds()<10 ? '0' : '') + dataAtual.getMilliseconds();
+
+	//var dataFormatada = milliseconds ;
+	const dataFormatada = segundo + milliseconds ;  
+	
+	return dataFormatada;
+		
+}
+
+
 // Função para apresentar uma String com a data e hora em formato DD/MM/AAAA HH:MM:SS
 function pegarDataAtual(){
-	var dataAtual = new Date();
-	var dia = (dataAtual.getDate()<10 ? '0' : '') + dataAtual.getDate();
-	var mes = ((dataAtual.getMonth() + 1)<10 ? '0' : '') + (dataAtual.getMonth() + 1);
-	var ano = dataAtual.getFullYear();
-	var hora = (dataAtual.getHours()<10 ? '0' : '') + dataAtual.getHours();
-	var minuto = (dataAtual.getMinutes()<10 ? '0' : '') + dataAtual.getMinutes();
-	var segundo = (dataAtual.getSeconds()<10 ? '0' : '') + dataAtual.getSeconds();
+	const dataAtual = new Date();
+	const dia = (dataAtual.getDate()<10 ? '0' : '') + dataAtual.getDate();
+	const mes = ((dataAtual.getMonth() + 1)<10 ? '0' : '') + (dataAtual.getMonth() + 1);
+	const ano = dataAtual.getFullYear();
+	const hora = (dataAtual.getHours()<10 ? '0' : '') + dataAtual.getHours();
+	const minuto = (dataAtual.getMinutes()<10 ? '0' : '') + dataAtual.getMinutes();
+	const segundo = (dataAtual.getSeconds()<10 ? '0' : '') + dataAtual.getSeconds();
 
-	var dataFormatada = dia + "/" + mes + "/" + ano + " " + hora + ":" + minuto + ":" + segundo;
+	const dataFormatada = dia + "/" + mes + "/" + ano + " " + hora + ":" + minuto + ":" + segundo;
 	return dataFormatada;
 }
 
@@ -224,15 +264,23 @@ function armazenaMensagem(mensagem){
 	}
 
 	ultimas_mensagens.push(mensagem);
-}
+};
 
 
 function functionStats(dados,userId){
-
-	const peers = {};
-	peers.userId = userId;
-	peers.stats = dados;
+	peers = userId;
 	
-	stats.set(peers.userId, peers.stats);
+	let dado = pegarTempo();
+	
+	stats.set(userId, dados);
 
+	return dado;
 };
+
+
+//Print da latência e stats na tela
+setInterval(() => {
+	if(Latência.size>1) console.log(Latência);
+	//console.log(stats);
+
+},5000) 

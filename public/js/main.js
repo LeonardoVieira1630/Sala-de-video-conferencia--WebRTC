@@ -50,11 +50,12 @@ class ClientMesh {
       dc.send(message);
     }
   }
+
   
 
   async creatingAnswerFunction(data, mediaStream){
     const fromId = data.fromId;
-    this.connections.get(fromId) = this.createConnection(fromId, mediaStream);
+    this.connections.set(fromId,this.createConnection(fromId, mediaStream) );
 
     const connection = this.connections.get(fromId);
     console.log(this.socket.id, " Receive offer from ", fromId);
@@ -101,12 +102,15 @@ class ClientMesh {
       dataChannelsClosed: 0,
       remoteCandidateId: null,
       localCandidateId: null,
+      totalEncodeTime: 0, 
 
     };
     
+    //Atualiza os stats e a latência a cada 1 seg.
     setInterval(() => {
       this.statistics(pc,userId,dadoInicial,dadosIntervalo);
-    },10000) // a cada 30 seg é printado no console.
+
+    },1000) 
 
   }
 
@@ -122,7 +126,7 @@ class ClientMesh {
           dadosIntervalo.packetsLost = report.packetsLost - dadoInicial.packetsLost;
           dadoInicial.packetsLost = report.packetsLost;
         } 
-      if ( report.type == "transport" ){
+        if ( report.type == "transport" ){
           let rpr = report.packetsReceived;
           let rps = report.packetsSent;
           let rbs = report.bytesSent;
@@ -141,11 +145,17 @@ class ClientMesh {
         if(report.type == "peer-connection"){
           dadosIntervalo.dataChannelsOpened = report.dataChannelsOpened;
           dadosIntervalo.dataChannelsClosed = report.dataChannelsClosed;
+
         }
         if(report.type == "candidate-pair"){
           dadosIntervalo.localCandidateId = report.localCandidateId;
           dadosIntervalo.remoteCandidateId = report.remoteCandidateId;
         }
+        
+        if(report.type == "outbound-rtp"){
+          dadosIntervalo.totalEncodeTime = report.totalEncodeTime;
+        }
+        
       })
       this.socket.emit('stats',dadosIntervalo, userId);
     }  
@@ -223,7 +233,7 @@ class ClientMesh {
     this.socket = io.connect();
 
     this.socket.on("user-joined", (room) => {
-      //const clients = room.clients;
+
       const joinedUserId = room.joinedUserId;
       console.log(joinedUserId, " joined");        
 
@@ -341,31 +351,40 @@ class ClientMesh {
     });
 
     //Resposta à atualização de usuários.
-    this.socket.on("atualizar_usuários", (usuários) => {
+    this.socket.on("atualizar_usuários", (usuários) => { 
       //Mandando atualizar la no client.
       this.emit("atualizar_usuários", usuários);
     });
+
+    
+    this.socket.on("atualizar_hora", (dataFormatada) => {
+      this.socket.emit("atualizar_hora", (dataFormatada))
+    });
+    
+
   }
 
+ 
+  
 
   //Function to start every thing:
    startLocalStream() {
 
     navigator.mediaDevices
-        .getUserMedia({
-          video: true,
-          audio: true,
-        })
-        .then((mediaStream) => {
-          this.localStream = mediaStream;
-          this.emit("localStream", mediaStream);
-          this.connectSocketToSignaling(mediaStream);
-          console.log("Pegando userMedia com constraints:", {
-            video: true,
-            audio: true,
-          });
-        })
-        .catch((e) => console.log("Error: ", e));
+    .getUserMedia({
+      audio: true,
+      video: { width: 1280, height: 720 }
+    })
+    .then((mediaStream) => {
+      this.localStream = mediaStream;
+      this.emit("localStream", mediaStream);
+      this.connectSocketToSignaling(mediaStream);
+      console.log("Pegando userMedia com constraints:", {
+        video: true,
+        audio: true,
+      });
+    })
+    .catch((e) => console.log("Error: ", e));
   }
 
 
