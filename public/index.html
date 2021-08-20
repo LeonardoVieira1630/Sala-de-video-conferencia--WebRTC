@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+    <link rel="shortcut icon" href="#" /> <!-- Para que o código não preciso do favicon.io-->
+
+    <head>
+
+        <title>Realtime communication with WebRTC</title>
+        <link rel="stylesheet" type="text/css" href="/css/style.css" />
+
+
+    </head>
+
+    <body>
+
+        
+        <div id='acesso_usuário_hide'>
+            <div>
+                <img class="center_img" src="/images/web_rtc-logo.png" >
+            </div>
+
+            <div id='acesso_usuário'>
+
+                <form id='login'>
+                    <div>
+                        <input type='text' placeholder='Insira seu apelido' name='apelido' id='apelido' />
+                    </div>
+                    <div id = 'botão'>
+                        <input type='submit' name= apertar value='Entrar' />
+                    </div>
+                </form>
+
+            </div>
+            <div style="margin-top: 20%; margin-left: 2%; font-family: Apple Chancery, cursive;">
+                <p>
+                    Feito por: Leonardo Vieira
+                </p>
+            </div>
+
+        </div>
+        
+        <div style="min-width: 565px;" id='sala_chat' >
+
+            <div>
+                <img style="margin-bottom: 5px;" class= 'center_img' src="/images/web_rtc-logo.png" >
+            </div>
+
+            <div class="center" >
+            
+                <p>Video principal</p>
+                <video class="margin" id="localVideo"  autoplay muted playsinline></video>
+                
+                <div id = "videoRemoto"></div>
+
+            </div>
+
+
+            <div style="min-width: 400px;" class="center">
+                <div id="histórico_mensagens" name = "histórico_mensagens"></div>
+                
+                <select multiple="multiple" id='lista_usuários'><option value=''>Todos</option></select>
+                <form id='chat'>
+                    <input type='text' id='texto_mensagem' name='texto_mensagem' />
+                    <input type='submit'  name='b_envia_msm' value='Enviar mensagem!' />	
+                </form>
+            </div>
+
+        </div>
+
+        
+
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.js"></script>
+
+        <!--<script src="js/chat.js"></script>-->
+
+
+        <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+
+        <!--The main have the client class-->
+        <script src="Client/main.js"></script>
+
+        
+        <!--The WorkWithClient have the needed
+            part to work with the client class-->
+        <script src="Client/WorkWithClient.js"></script>
+ 
+ 
+
+    </body>
+
+</html>

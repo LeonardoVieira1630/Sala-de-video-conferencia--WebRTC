@@ -26,19 +26,41 @@ This project is a a WebRTC - Mesh room. In other words, this is a video conferen
 &nbsp;
 ## **Modules and requirements:**
 
--> Node.js
+    -> Node.js
 
--> Socket.io
+    -> Socket.io
 
--> Express
+    -> Express
+
+    -> Nodemon
+
+    Optional:
+
+    -> Docker
+
+    -> Docker-compose
 
 &nbsp;
-## **Installation**
+## **Installation with Docker**
+
+Docker is a program that allows us to use a container to run the project. This way we can run all things without the necessity of download the dependencies. Choosing this way of installation you will need todo the following steps:
+
+1. Install docker and docker compose to your operating system.
+
+2. Run this in the project directory: 
+```bash
+ sudo docker-compose up
+```
+that way you will create a container and the program will run in the port 3000.
+
+
+&nbsp;
+## **Normal Installation**
 
 In the terminal, clone the project:
 
 ```bash
- git clone https://github.com/Ffquenome/WebRTC-Mesh.git
+git clone https://github.com/Ffquenome/WebRTC-Mesh.git
 ```
 After it, download the modules:
 
@@ -52,25 +74,40 @@ After it, download the modules:
 In the terminal type this:
 
 ```bash
-  node index.js
+  npm run app
 ```
 
 This way, you will start the server. 
 
 Now open: http://localhost:8080/ in work browser and that is it.
 
+
 &nbsp;
 ## **What is each file?**
 
-We basically have 4 four main files:
+Because of the complexity and completeness of this project, it is a lot of folders and filles. If you want to understand one by one, look at this resume: 
 
-**1**- Main.js (will contain the client part).
+- **Dockerfile, .dockerignore and docker-compose.yml**: It contains information about the container docker and it execution (necessary only for execution with docker).
 
-**2**- WorkWithClient.js (will contain the code that will manage the client's part).
+- **Public**: Folder that contain all the key files of the project.
 
-**3**- index.html ("Front-end" part of the room).
+    - **Index.html:**  Skeleton of the web page. It Joins all the project parts.
+    - **Client:** Contains all the things about the client part.
+        - **func_test_main.js:** Functions used for the testing part.
+        - **main.js:** Class the represent the client main part.
+        - **main.test.js:** All test done with jest and selenium
+        - **WorkWithClient.js:** Contain code the do the integration of client and web interface.
+    - **css:** Store css files.
+    - **Server:** Files of the server.
+        - **index.js:** Principal back end part. Contain the heart of the WebRTC and the statistics.
+        - **func_info.js:** Store the functions the get information of the server and peers.
+        - **func_info.test.js:** File the test all the functions created in func_info.
+        - **func_time.js:** Store the functions the get information of the time.
+        - **func_info.test.js:** File the test the functions created in func_time.
+        - **func_time2.js:** Other part of the functions the get information of the time.
+        - **func_info.test2.js:** File the test all the functions created in func_time2.
 
-**4**- index.css ("Front-end" part of the room). 
+
 
 &nbsp;
 
@@ -106,6 +143,7 @@ cml.on("localStream", (evt) => {
   handleUserMedia(evt);
 });
 ```
+
 
 &nbsp;
 ## **Events**
@@ -256,3 +294,26 @@ function mediaOfTheUser(mediaStream) {
     localVideo.srcObject = mediaStream;
 }
 ```
+
+
+&nbsp;
+## **Tests**
+We have a lot of tests to run and debug all the application.
+
+if you do do some modifications or things like that, run the tests is a good ideia to see if everything still working fine. To do it, follow this steps:
+
+1- Download jest API:
+
+```
+npm install --save-dev jest
+```
+
+2- Download Selenium WebDriver like this guy does in the youtube: https://www.youtube.com/watch?v=fj0Ud16YJJw
+
+3- Run de code normally in the command prompt. 
+
+4- Open other prompt and tipe:
+```
+jest
+```
+this way, all tests will run.
