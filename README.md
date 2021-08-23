@@ -79,7 +79,7 @@ In the terminal type this:
 
 This way, you will start the server. 
 
-Now open: http://localhost:8080/ in work browser and that is it.
+Now open: http://localhost:3000/ in work browser and that is it.
 
 
 &nbsp;
